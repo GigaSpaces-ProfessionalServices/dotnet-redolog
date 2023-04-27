@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="DeserializeRedoLog" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="11" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <option name="MAIN_CLASS_NAME" value="com.gs.DeserializeRedoLog" />
+    <module name="redolog-client" />
+    <option name="PROGRAM_PARAMETERS" value="--spaceName=redolog --containerName=redolog_container1 --outputFileName=myredolog.yaml" />
+    <option name="VM_PARAMETERS" value="-Dcom.gs.home=${HOME}/backup" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
