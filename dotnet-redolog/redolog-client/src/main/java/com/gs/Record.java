@@ -12,8 +12,8 @@ public class Record implements java.io.Serializable {
     public static String FIELD_SEPARATOR = "#";
     Operation opr;
     String type;
-    List<Map.Entry<String,Object>> fixedProps;
-    String dynamicProps;
+    List<Object> fixedProps;
+    Map<String, Object> dynamicProps;
     String uid;
     String changes;
 
@@ -43,19 +43,19 @@ public class Record implements java.io.Serializable {
         this.type = type;
     }
 
-    public List<Map.Entry<String,Object>> getFixedProps() {
+    public List<Object> getFixedProps() {
         return fixedProps;
     }
 
-    public void setFixedProps(List<Map.Entry<String,Object>> fixedProps) {
+    public void setFixedProps(List<Object> fixedProps) {
         this.fixedProps = fixedProps;
     }
 
-    public String getDynamicProps() {
+    public Map<String,Object> getDynamicProps() {
         return dynamicProps;
     }
 
-    public void setDynamicProps(String dynamicProps) {
+    public void setDynamicProps(Map<String,Object> dynamicProps) {
         this.dynamicProps = dynamicProps;
     }
 
