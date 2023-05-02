@@ -25,11 +25,13 @@ import java.util.*;
 
 public class DeserializeRedoLog {
 
-    String spaceName = "redolog";
-    String containerName = "redolog_container1";
-    String outputFileName = "myredolog.yaml";
-    Path directory = SystemLocations.singleton().work("redo-log").resolve(spaceName);
-    Path codeMapFile = directory.resolve(containerName + "_code_map");
+    String spaceName;
+    String containerName;
+    String outputFileName;
+    Path directory;
+    Path codeMapFile;
+
+    private static final String redoLogSubpath = "redo-log";
 
     Map<String, String[]> fieldNamesMap = new HashMap<>();
 
@@ -45,7 +47,9 @@ public class DeserializeRedoLog {
     /*
         This code is needed in order to deserialize packets internally
      */
-    public void readCodeMap(){
+    public void readCodeMap() {
+        directory = SystemLocations.singleton().work(redoLogSubpath).resolve(spaceName);
+        codeMapFile = directory.resolve(containerName + "_code_map");
         System.out.println("READ CLASS CODES FROM: " + codeMapFile.getFileName());
 
         if (codeMapFile.toFile().exists()) {
@@ -83,7 +87,7 @@ public class DeserializeRedoLog {
         //out.close();
 
     }
-    protected String[] getFieldMap(String typeName) throws Exception {
+    private String[] getFieldMap(String typeName) throws Exception {
         if(fieldNamesMap.containsKey(typeName)) {
             return fieldNamesMap.get(typeName);
         }
@@ -102,8 +106,9 @@ public class DeserializeRedoLog {
         fieldNamesMap.put(typeName, fieldNames);
         return fieldNames;
     }
-    protected List<Map.Entry<String,Object>> createFixedPropsMap(String typeName, Object[] fixedPropertiesValues) throws ClassNotFoundException, Exception {
 
+    protected List<Object> createFixedProps(String typeName, Object[] fixedPropertiesValues) throws ClassNotFoundException, Exception {
+/*
         String[] fields = getFieldMap(typeName);
 
         if( fields.length != fixedPropertiesValues.length) {
@@ -111,13 +116,15 @@ public class DeserializeRedoLog {
                     fields.length, typeName, fixedPropertiesValues.length);
             throw new Exception(error);
         }
-        List<Map.Entry<String, Object>> list = new ArrayList<>();
+
+ */
+        List<Object> list = new ArrayList<>();
 
         // assuming fields is sorted and in same order as values
-        for(int i=0; i < fields.length; i++) {
-            Map.Entry<String, Object> entry = Map.entry(fields[i], fixedPropertiesValues[i]);
+        for(int i=0; i < fixedPropertiesValues.length; i++) {
+            //Map.Entry<String, Object> entry = Map.entry(fields[i], fixedPropertiesValues[i]);
 
-            list.add(entry);
+            list.add(fixedPropertiesValues[i]);
         }
 
         //Arrays.stream(fixedPropertiesValues).iterator().forEachRemaining(value -> map.append(value + " "));
@@ -131,15 +138,13 @@ public class DeserializeRedoLog {
             IEntryData entryData = writePacket?getWriteData(data):getUpdateData(data);
             //ITypeDesc typeDescriptor = entryData.getSpaceTypeDescriptor();
             Object[] fixedPropertiesValues = entryData.getFixedPropertiesValues();
-            Map<String, Object> values2 = entryData.getDynamicProperties();
+            Map<String, Object> dynamicPropertiesValues = entryData.getDynamicProperties();
             String typeName = data.getTypeName();
             Record record = new Record(Record.Operation.write, typeName, data.getUid());
 
-            record.fixedProps = createFixedPropsMap(typeName, fixedPropertiesValues);
-            if (values2 != null){
-                StringBuffer dynamicProps = new StringBuffer(40);
-                values2.forEach((key,value) -> dynamicProps.append("key:" + key + " value:" + value +" "));
-                record.dynamicProps=dynamicProps.toString();
+            record.fixedProps = createFixedProps(typeName, fixedPropertiesValues);
+            if (dynamicPropertiesValues != null){
+                record.setDynamicProps(dynamicPropertiesValues);
             }
 
             appendRecord(record);
