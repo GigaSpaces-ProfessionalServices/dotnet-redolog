@@ -131,7 +131,7 @@ public class DeserializeRedoLog {
         return list;
     }
 
-    protected void processSingleEntryData(IReplicationPacketEntryData data) throws Exception{
+    protected void processSingleEntryData(IReplicationPacketEntryData data) throws Exception {
         boolean writePacket = data instanceof WriteReplicationPacketData?true:false;
         boolean updatePacket = data instanceof UpdateReplicationPacketData?true:false;
         if (writePacket || updatePacket){
@@ -162,9 +162,7 @@ public class DeserializeRedoLog {
         else if (data instanceof ChangeReplicationPacketData){
             ChangeReplicationPacketData changeReplicationPacketData = (ChangeReplicationPacketData)data;
             Collection<SpaceEntryMutator> mutators = changeReplicationPacketData.getCustomContent();
-            Record record = new Record();
-            record.setOpr(Record.Operation.change);
-            record.setType(data.getTypeName());
+            Record record = new Record(Record.Operation.change, data.getTypeName(), changeReplicationPacketData.getUid());
             record.setChanges(mutators.toString());
             appendRecord(record);
         }
