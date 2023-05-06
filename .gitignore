@@ -43,3 +43,4 @@ Thumbs.db
 # vs
 # Visual Studio temp
 .vs/
+*.suo
