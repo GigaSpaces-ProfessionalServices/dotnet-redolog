@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "ReadRedoLogContents": {
+      "commandName": "Project",
+      "commandLineArgs": "--spaceName=dataExampleSpace\r\n--lookupLocators=EC2AMAZ-PUUQMQH\r\n--lookupGroups=xap-16.2.1\r\n--redoLogYaml=C:\\Users\\Administrator\\Documents\\redologcontents.yaml\r\n--assemblyFileName=C:\\Users\\Administrator\\source\\repos\\ProcessingUnitWithCSharp\\Release\\GigaSpaces.Examples.ProcessingUnit.Common.dll",
+      "workingDirectory": "C:\\Users\\Administrator\\source\\repos\\ReadRedoLogContents\\bin\\Debug\\net4.8"
+    }
+  }
+}

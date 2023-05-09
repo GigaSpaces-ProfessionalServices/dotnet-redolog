@@ -24,6 +24,7 @@ namespace ReadRedoLogContents
         //   Second field is the length of the classname including package
         //   Third field is toString of getId()
         //   Last field is always ^0^0.
+        // See: github.com/xap/xap SpaceUidFactory.java
         private string? _uid;
         private string? _changes;
 
