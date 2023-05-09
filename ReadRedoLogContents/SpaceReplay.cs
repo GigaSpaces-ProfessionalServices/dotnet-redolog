@@ -1,66 +1,85 @@
 ﻿using GigaSpaces.Core;
 using GigaSpaces.Core.Metadata;
+using NLog;
 using System.Reflection;
-using System.Text.RegularExpressions;
 
 namespace ReadRedoLogContents
 {
+    /*
+     * This class takes redo log record information, reconstructs the objects and makes GigaSpaces API calls to re-run the operation
+     */
     internal class SpaceReplay
     {
+        private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
+
         private ISpaceProxy _proxy;
 
+        private string? _assemblyFileName;
         private Assembly? _assembly;
 
-        public SpaceReplay(ISpaceProxy proxy) { _proxy = proxy; }
-        /*
-        public static T ChangeType<T>(object value)
+        Dictionary<string, Type> typeNameTypePairs = new Dictionary<string, Type>();
+        Dictionary<string, string[]> typeNameSortedPropertyNamesPairs = new Dictionary<string, string[]>();
+
+        public SpaceReplay(ISpaceProxy proxy, string assemblyFileName)
         {
-            var t = typeof(T);
-
-            if (t.IsGenericType && t.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
-            {
-                if (value == null)
-                {
-                    return default(T);
-                }
-
-                t = Nullable.GetUnderlyingType(t);
-            }
-
-            return (T)Convert.ChangeType(value, t);
+            _proxy = proxy;
+            _assemblyFileName = assemblyFileName;
         }
-
-        public static object ChangeType(object value, Type conversion)
-        {
-            var t = conversion;
-
-            Console.WriteLine("t is: " + t);
-
-            if (t.IsGenericType && t.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
-            {
-                if (value == null)
-                {
-                    return null;
-                }
-
-                t = Nullable.GetUnderlyingType(t);
-            }
-
-            return Convert.ChangeType(value, t);
-        }
-        */
 
         private void initAssembly()
         {
-            //string assemblyFilename = @"C:\GigaSpaces\smart-cache.net-16.2.1-x64\NET v4.0\Examples\ProcessingUnit\Common\obj\x64\Debug\GigaSpaces.Examples.ProcessingUnit.Common.dll";
-            string assemblyFilename = @"C:\Users\Administrator\source\repos\ProcessingUnitWithCSharp\Release\GigaSpaces.Examples.ProcessingUnit.Common.dll";
-
-            _assembly = Assembly.LoadFrom(assemblyFilename);
-
+            _assembly = Assembly.LoadFrom(_assemblyFileName);
         }
+        private Type getTypeFromTypeName(string typeName, Assembly assembly)
+        {
+            if( typeNameTypePairs.ContainsKey(typeName))
+            {
+                return typeNameTypePairs[typeName];
+            }
+            else
+            {
+                Type type = assembly.GetType(typeName);
+                typeNameTypePairs.Add(typeName, type);
+                return type;
+            }
+        }
+        private string[] getSortedPropertyNamesFromTypeName(string typeName, Type entryType)
+        {
+            if(typeNameSortedPropertyNamesPairs.ContainsKey(typeName))
+            {
+                return typeNameSortedPropertyNamesPairs[typeName]; 
+            }
+            else
+            {
+                PropertyInfo[] propertyInfo = entryType.GetProperties();
+
+                string[] propertyNames = new string[propertyInfo.Length];
+
+                for (int i = 0; i < propertyInfo.Length; i++)
+                {
+                    propertyNames[i] = propertyInfo[i].Name;
+                }
+
+                Array.Sort(propertyNames);
+
+                typeNameSortedPropertyNamesPairs.Add(typeName, propertyNames);
+                return propertyNames;
+            }
+        }
+        private ISpaceTypeDescriptor registerAndGetTypeDescriptor(Type entryType)
+        {
+            _proxy.TypeManager.RegisterTypeDescriptor(entryType);
+            return _proxy.TypeManager.GetTypeDescriptor(entryType);
+        }
+        public static Type getPropertyType(Type entryType, string propertyName)
+        {
+            PropertyInfo propertyInfo = entryType.GetProperty(propertyName);
+            return propertyInfo.PropertyType;
+        }
+
         public void write(Record record) {
             string sType = record.Type;
-            Console.WriteLine("sType is: " + sType);
+            Logger.Info("sType is: " + sType);
 
             if ( _assembly == null )
             {
@@ -68,36 +87,26 @@ namespace ReadRedoLogContents
             }
 
             var entry = _assembly.CreateInstance(sType);
-            Type type = _assembly.GetType(sType);
+            Type entryType = getTypeFromTypeName(sType, _assembly);
 
-            // TODO - cache sorted field names
-            PropertyInfo[] propertyInfo = type.GetProperties();
+            string[] propertyNames = getSortedPropertyNamesFromTypeName(sType, entryType);
 
-            string[] propertyNames = new string[propertyInfo.Length];
-
-            for (int i = 0; i < propertyInfo.Length; i++)
-            {
-                propertyNames[i] = propertyInfo[i].Name;
-            }
-
-            Array.Sort(propertyNames);
-
+            // set the property values for each property in the entry
             for (int i = 0; i < record.FixedProps.Count; i++)
             {
                 object value = record.FixedProps[i];
                 string propertyName = propertyNames[i];
 
-                Console.WriteLine("i is: " + i);
-                Console.WriteLine("propertyName is: " + propertyName);
-                Console.WriteLine("value is: " + value);
+                Logger.Debug("i is: " + i);
+                Logger.Debug("propertyName is: " + propertyName);
+                Logger.Debug("value is: " + value);
 
                 if (value != null)
                 {
+                    PropertyInfo property = entryType.GetProperty(propertyNames[i]);
 
-                    PropertyInfo property = type.GetProperty(propertyNames[i]);
-
-                    Console.WriteLine("property.Name is: {0}, property.PropertyType() is: {1} ", property.Name, property.PropertyType);
-                    Console.WriteLine("value type is: " + value.GetType());
+                    Logger.Debug("property.Name is: {0}, property.PropertyType() is: {1} ", property.Name, property.PropertyType);
+                    Logger.Debug("value type is: " + value.GetType());
                     property.SetValue(entry, convertStringToObject(property.PropertyType, value));
                 }
             }
@@ -105,19 +114,18 @@ namespace ReadRedoLogContents
         }
         public void remove(Record record)
         {
-
-            // register the type
-            // ask gs to what the id property is
+            // get the id
             // use this to call takeById
             string sType = record.Type;
-            Console.WriteLine("sType is: " + sType);
+            Logger.Info("sType is: " + sType);
 
+            /*
             if (_assembly == null)
             {
                 initAssembly();
             }
             var entry = _assembly.CreateInstance(sType);
-            Type entryType = _assembly.GetType(sType);
+            Type entryType = getTypeFromTypeName(sType, _assembly);
 
             ISpaceTypeDescriptor spaceTypeDescriptor = registerAndGetTypeDescriptor(entryType);
 
@@ -125,26 +133,25 @@ namespace ReadRedoLogContents
             string idPropertyName = spaceTypeDescriptor.IdPropertyName;
             PropertyInfo idProperty = entryType.GetProperty(idPropertyName);
             Type idPropertyType = idProperty.PropertyType;
+            idProperty.SetValue(entry, convertStringToObject(idProperty.PropertyType, record.Uid));
+
+            var returnValue = _proxy.Take(entry);
+             */
 
             string sId = parseIdStringFromUid(record.Uid);
 
-            //var idObject = parseStringToObject(idPropertyType, sId);
             IdQuery<object> idQuery = new GigaSpaces.Core.IdQuery<object>(sType, sId);
 
             var returnValue = _proxy.TakeById(idQuery);
-            //idProperty.SetValue(entry, convertStringToObject(idProperty.PropertyType, record.Uid));
-
-            //var returnValue = _proxy.Take(entry);
-            //SqlQuery<GigaSpaces.Examples.ProcessingUnit.Common.Data> query = new SqlQuery<Data>("Id = ?");
 
             if (returnValue == null)
             {
-                Console.WriteLine("An attempt to remove record: {0} was made, but the item was not found.", record.ToString());
+                Logger.Error("An attempt to remove record: {0} was made, but the item was not found.", record.ToString());
             }
             else
             {
-                Console.WriteLine("The call to TakeById was successful");
-                Console.WriteLine("returnValue is: " + returnValue.ToString());
+                Logger.Info("The call to TakeById was successful");
+                Logger.Debug("returnValue is: " + returnValue.ToString());
             }
             // TODO - verify
         }
@@ -152,46 +159,31 @@ namespace ReadRedoLogContents
         public void change(Record record)
         {
 
-            // register the type
-            // ask gs to what the id property is
-            // use this to call change
             string sType = record.Type;
-            Console.WriteLine("sType is: " + sType);
-            Console.WriteLine("record.Changes is: " + record.Changes);
+            Logger.Info("sType is: " + sType);
+            Logger.Debug("record.Changes is: " + record.Changes);
 
             if (_assembly == null)
             {
                 initAssembly();
             }
 
-            var entry = _assembly.CreateInstance(sType);
-            Type entryType = _assembly.GetType(sType);
-
-            ISpaceTypeDescriptor spaceTypeDescriptor = registerAndGetTypeDescriptor(entryType);
-            
-            // create the idQuery
-            string idPropertyName = spaceTypeDescriptor.IdPropertyName;
-            PropertyInfo idProperty = entryType.GetProperty(idPropertyName);
-            Type idPropertyType = idProperty.PropertyType;
+            Type entryType = getTypeFromTypeName(sType, _assembly);
 
             string sId = parseIdStringFromUid(record.Uid);
             
-            //var idObject = parseStringToObject(idPropertyType, sId);
             IdQuery<object> idQuery = new GigaSpaces.Core.IdQuery<object>(sType, sId);
 
+            // create the changeSet
             ChangeSet changeSet = ChangeContentParser.parse(record.Changes, entryType);
 
             _proxy.Change<object>(idQuery, changeSet);
 
         }
-        private ISpaceTypeDescriptor registerAndGetTypeDescriptor(Type entryType)
-        {
-            _proxy.TypeManager.RegisterTypeDescriptor(entryType);
-            return _proxy.TypeManager.GetTypeDescriptor(entryType);
-        }
         private static string parseIdStringFromUid(string uid)
         {
-            // TODO: need logic to check if SpaceId is autoGenerate=true  
+            // TODO: need logic to check if SpaceId is autoGenerate=true
+            // See: github.com/xap/xap SpaceUidFactory.java
             string[] uidTokens = uid.Split('^');
             return uidTokens[2];
         }
@@ -201,11 +193,7 @@ namespace ReadRedoLogContents
             if (Nullable.GetUnderlyingType(toType) != null)
             {
                 // TODO: test other nullable
-                // it's nullable
-                //if (Nullable.GetUnderlyingType(toType) == typeof(string))
-                //{
-                // handle and test nullable string
-                //}    
+                // it's nullable    
                 if (Nullable.GetUnderlyingType(toType) == typeof(bool))
                 {
                     return parseStringToObject(typeof(bool), fromValue);
@@ -257,7 +245,6 @@ namespace ReadRedoLogContents
                     return byte.Parse((String)fromValue);
                 }
             }
-
             else if (toType == typeof(int))
             {
                 if (fromValueType == typeof(string))
@@ -290,98 +277,5 @@ namespace ReadRedoLogContents
             // it's either a string type or type not handled above 
             return fromValue;
         }
-        public static Type getPropertyType(Type entryType, string propertyName)
-        {
-            PropertyInfo propertyInfo = entryType.GetProperty(propertyName);
-            return propertyInfo.PropertyType;
-        }
-    
-    }
-
-    public class ChangeContentParser
-    {
-        private const string expression = @"^([a-zA-Z]+)\[(.+?)\]";
-        //                                     ^ captures ChangeSet type
-        //                                                 ^ captures path and change value
-        
-        public static ChangeSet parse(string content, Type entryType)
-        {
-            ChangeSet changeSet = new ChangeSet();
-
-            if (content.StartsWith("[") && content.EndsWith("]"))
-            {
-                content = content.Substring(1, content.Length - 1);
-                Regex regex = new Regex(expression, RegexOptions.Compiled);
-                Match m = regex.Match(content);
-                while (m.Success)
-                {
-                    GroupCollection groups = m.Groups;
-                    string changeType = groups[1].Value;
-                    string changeDetails = groups[2].Value;
-                    string item = string.Format("{0}[{1}]", changeType, changeDetails);
-                    Console.WriteLine("item is: \"{0}\"", item);
-                    Console.WriteLine("changeType is: {0}, changeDetails is: {1}", changeType, changeDetails);
-                    content = content.Substring(item.Length);
-                    addToChangeSet(changeSet, changeType, changeDetails, entryType);
-
-                    if (content.StartsWith(", "))
-                    {
-                        // remove the comma separating ChangeSet
-                        content = content.Substring(", ".Length);
-                        Console.WriteLine("remainder is: \"{0}\"", content);
-
-                        m = regex.Match(content);
-                    } else
-                    {
-                        break;
-                    }
-                }
-                return changeSet;
-            }
-            else
-            {
-                return changeSet;
-            }
-        }
-
-        private static void addToChangeSet(ChangeSet changeSet, string changeType, string changeDetails, Type entryType)
-        {
-            string[] changeDetailsTokens = changeDetails.Split(',');
-            
-            string[] pathTokens = changeDetailsTokens[0].Split('=');
-            string path = pathTokens[1];
-
-            string[] valueTokens = changeDetailsTokens[1].Split('=');
-            string value = valueTokens[1];
-
-            // TODO; Test other change operations
-            if (changeType.Equals("IncrementSpaceEntryMutator"))
-            {
-                Type toType = SpaceReplay.getPropertyType(entryType, path);
-                var objValue = SpaceReplay.parseStringToObject(toType, value);
-
-                if (toType == typeof(byte)) {
-                    changeSet.Increment(path, (byte) objValue);
-                    return;
-                }
-                else if (toType == typeof(int))
-                {
-                    changeSet.Increment(path, (int)objValue);
-                    return;
-                }
-                else if (toType == typeof(long))
-                {
-                    changeSet.Increment(path, (long)objValue);
-                    return;
-                }
-                else if (toType == typeof(double))
-                {
-                    changeSet.Increment(path, (double)objValue);
-                    return;
-                }
-            }
-            string sError = string.Format("The change type: {0} is not supported.", changeType);
-            new InvalidOperationException(sError);
-        }        
     }
 }

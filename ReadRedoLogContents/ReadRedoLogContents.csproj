@@ -7,9 +7,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>x64</PlatformTarget>
+    <StartupObject>ReadRedoLogContents.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NLog" Version="5.1.4" />
     <PackageReference Include="YamlDotNet" Version="13.1.0" />
   </ItemGroup>
 
@@ -21,6 +23,12 @@
       <HintPath>..\..\..\..\..\GigaSpaces\smart-cache.net-16.2.1-x64\NET v4.0\Examples\ProcessingUnit\Common\obj\x64\Debug\GigaSpaces.Examples.ProcessingUnit.Common.dll</HintPath>
     </Reference>
     <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="NLog.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
