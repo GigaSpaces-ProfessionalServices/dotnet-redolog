@@ -115,34 +115,22 @@ namespace ReadRedoLogContents
         public void remove(Record record)
         {
             // get the id
-            // use this to call takeById
+            // create a template and set the id
+            // call Take
             string sType = record.Type;
             Logger.Info("sType is: " + sType);
 
-            /*
             if (_assembly == null)
             {
                 initAssembly();
             }
-            var entry = _assembly.CreateInstance(sType);
+
             Type entryType = getTypeFromTypeName(sType, _assembly);
 
-            ISpaceTypeDescriptor spaceTypeDescriptor = registerAndGetTypeDescriptor(entryType);
-
-            // create the idQuery
-            string idPropertyName = spaceTypeDescriptor.IdPropertyName;
-            PropertyInfo idProperty = entryType.GetProperty(idPropertyName);
-            Type idPropertyType = idProperty.PropertyType;
-            idProperty.SetValue(entry, convertStringToObject(idProperty.PropertyType, record.Uid));
-
-            var returnValue = _proxy.Take(entry);
-             */
-
             string sId = parseIdStringFromUid(record.Uid);
+            object templateQuery = createIdTemplate(sType, sId);
 
-            IdQuery<object> idQuery = new GigaSpaces.Core.IdQuery<object>(sType, sId);
-
-            var returnValue = _proxy.TakeById(idQuery);
+            var returnValue = _proxy.Take(templateQuery);
 
             if (returnValue == null)
             {
@@ -150,10 +138,9 @@ namespace ReadRedoLogContents
             }
             else
             {
-                Logger.Info("The call to TakeById was successful");
+                Logger.Info("The call to Take was successful");
                 Logger.Debug("returnValue is: " + returnValue.ToString());
             }
-            // TODO - verify
         }
 
         public void change(Record record)
@@ -171,14 +158,39 @@ namespace ReadRedoLogContents
             Type entryType = getTypeFromTypeName(sType, _assembly);
 
             string sId = parseIdStringFromUid(record.Uid);
+            object templateQuery = createIdTemplate(sType, sId);
             
-            IdQuery<object> idQuery = new GigaSpaces.Core.IdQuery<object>(sType, sId);
-
             // create the changeSet
             ChangeSet changeSet = ChangeContentParser.parse(record.Changes, entryType);
 
-            _proxy.Change<object>(idQuery, changeSet);
+            IChangeResult<object> changeResult = _proxy.Change<object>(templateQuery, changeSet);
+            if (changeResult == null)
+            {
+                Logger.Info("changeResult is null.");
+            }
+            else
+            {
+                Logger.Debug("number of changed entries is for {0}, id {1} is: {2}", sType, sId, changeResult.NumberOfChangedEntries);
+            }
 
+        }
+
+        private object createIdTemplate(string sType, string sId)
+        {
+            if (_assembly == null)
+            {
+                initAssembly();
+            }
+            var entry = _assembly.CreateInstance(sType);
+            Type entryType = getTypeFromTypeName(sType, _assembly);
+
+            ISpaceTypeDescriptor spaceTypeDescriptor = registerAndGetTypeDescriptor(entryType);
+
+            string idPropertyName = spaceTypeDescriptor.IdPropertyName;
+            PropertyInfo idProperty = entryType.GetProperty(idPropertyName);
+            Type idPropertyType = idProperty.PropertyType;
+            idProperty.SetValue(entry, convertStringToObject(idProperty.PropertyType, sId));
+            return entry;
         }
         private static string parseIdStringFromUid(string uid)
         {

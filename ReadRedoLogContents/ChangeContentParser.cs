@@ -79,6 +79,7 @@ namespace ReadRedoLogContents
         }
         private static void addToChangeSet(ChangeSet changeSet, string changeType, string changeDetails, Type entryType)
         {
+            string sError;
 
             // TODO: Test other change operations
             if (changeType.Equals("IncrementSpaceEntryMutator"))
@@ -90,31 +91,41 @@ namespace ReadRedoLogContents
                 Logger.Debug("path is: {0}", path);
                 Logger.Debug("delta is: {0}", delta);
                 Type toType = SpaceReplay.getPropertyType(entryType, path);
-                var objValue = SpaceReplay.parseStringToObject(toType, delta);
+                var objValue = SpaceReplay.convertStringToObject(toType, delta);
 
-                if (toType == typeof(byte))
+                if (toType == typeof(byte) ||
+                    Nullable.GetUnderlyingType(toType) == typeof(byte) )
                 {
                     changeSet.Increment(path, (byte)objValue);
                     return;
                 }
-                else if (toType == typeof(int))
+                else if (toType == typeof(int) ||
+                    Nullable.GetUnderlyingType(toType) == typeof(int) )
                 {
                     changeSet.Increment(path, (int)objValue);
                     return;
                 }
-                else if (toType == typeof(long))
+                else if (toType == typeof(long) ||
+                    Nullable.GetUnderlyingType(toType) == typeof(long) )
                 {
                     changeSet.Increment(path, (long)objValue);
                     return;
                 }
-                else if (toType == typeof(double))
+                else if (toType == typeof(double) ||
+                    Nullable.GetUnderlyingType(toType) == typeof(double) )
                 {
                     changeSet.Increment(path, (double)objValue);
                     return;
                 }
+                sError = string.Format("The change type: {0}, with type: {1} is not supported.", changeType, toType);
+
+            } else
+            {
+                sError = string.Format("The change type: {0} is not supported.", changeType);
             }
-            string sError = string.Format("The change type: {0} is not supported.", changeType);
-            new InvalidOperationException(sError);
+
+            Logger.Error(sError);
+            throw new InvalidOperationException(sError);
         }
     }
 }
