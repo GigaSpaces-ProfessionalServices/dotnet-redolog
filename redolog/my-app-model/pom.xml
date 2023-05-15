@@ -8,7 +8,7 @@
 
     <parent>
         <groupId>com.gigaspaces.persist.training</groupId>
-        <artifactId>lab9-redolog</artifactId>
+        <artifactId>redolog</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
 

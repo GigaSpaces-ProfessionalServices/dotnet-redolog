@@ -1,7 +1,7 @@
 
 set GIGA=C:\GigaSpaces\smart-cache.net-16.2.1-x64\Runtime
 
-set PROJ_DIR=C:\Users\Administrator\Downloads\xap-persist-training-lab9-redolog
+set PROJ_DIR=C:\Users\Administrator\Downloads\dotnet-redolog\redolog
 
 set CLASSES_DIR=%PROJ_DIR%\redolog-client\target\classes
 
