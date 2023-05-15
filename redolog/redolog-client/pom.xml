@@ -8,7 +8,7 @@
     <artifactId>redolog-client</artifactId>
     <name>redolog-client</name>
     <parent>
-        <artifactId>lab9-redolog</artifactId>
+        <artifactId>redolog</artifactId>
         <groupId>com.gigaspaces.persist.training</groupId>
         <version>1.0-SNAPSHOT</version>
     </parent>
