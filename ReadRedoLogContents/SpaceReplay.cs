@@ -78,6 +78,9 @@ namespace ReadRedoLogContents
         }
 
         public void write(Record record) {
+            // create a new empty object
+            // populate its properties
+            // write it to the space
             string sType = record.Type;
             Logger.Info("sType is: " + sType);
 
@@ -145,7 +148,10 @@ namespace ReadRedoLogContents
 
         public void change(Record record)
         {
-
+            // create the template for querying
+            // the template will contain its id property only
+            // parse the Changes field in the record to create a ChangeSet object
+            // call the GigaSpaces.change API
             string sType = record.Type;
             Logger.Info("sType is: " + sType);
             Logger.Debug("record.Changes is: " + record.Changes);
@@ -174,7 +180,13 @@ namespace ReadRedoLogContents
             }
 
         }
-
+        /*
+           Template matching is a way to match objects in the space.
+           Briefly, a POCO template is instantiated. Any property that is null is treated as a wild card.
+           If a property is set, the template matches based on equality.
+           The template can then be passed into various GigaSpaces APIs, such as read, take.
+           See: https://docs.gigaspaces.com/latest/dev-dotnet/query-template-matching.html
+         */
         private object createIdTemplate(string sType, string sId)
         {
             if (_assembly == null)
