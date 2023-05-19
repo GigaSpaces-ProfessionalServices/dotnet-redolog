@@ -22,8 +22,12 @@ import java.io.*;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DeserializeRedoLog {
+
+    static Logger log;
 
     String spaceName;
     String containerName;
@@ -50,14 +54,18 @@ public class DeserializeRedoLog {
     public void readCodeMap() {
         directory = SystemLocations.singleton().work(redoLogSubpath).resolve(spaceName);
         codeMapFile = directory.resolve(containerName + "_code_map");
-        System.out.println("READ CLASS CODES FROM: " + codeMapFile.getFileName());
+        log.log(Level.INFO, "READ CLASS CODES FROM: " + codeMapFile.getFileName());
+
+        String codeMapFilePath = codeMapFile.toFile().getAbsolutePath();
+
+        log.log(Level.INFO, "The full path of the code map file is: " + codeMapFilePath);
 
         if (codeMapFile.toFile().exists()) {
             try (FileInputStream fis = new FileInputStream(codeMapFile.toFile())) {
                 try (ObjectInputStream ois = new ObjectInputStream(fis)) {
                     IOUtils.readCodeMaps(ois);
                     //IOUtils.
-                    System.out.println("===");
+                    log.log(Level.INFO, "===");
                 } catch (ClassNotFoundException e) {
                     throw new RuntimeException(e);
                 }
@@ -65,24 +73,34 @@ public class DeserializeRedoLog {
                 throw new RuntimeException(e);
             }
         }
+        else {
+            log.log(Level.WARNING, String.format("The code map file %s does not exist, skipping processing", codeMapFilePath));
+        }
     }
 
     public void process() throws Exception {
-        System.out.println("READ REDO-LOG FILE");
+
+        log.log(Level.INFO, "READ REDO-LOG FILE");
         Path path = SystemLocations.singleton().work("redo-log/" + spaceName);
         String dbName = "sqlite_storage_redo_log_" + containerName;
-        System.out.println("Path:" +path + " dbName:"+ dbName);
+        log.log(Level.INFO, String.format("The full path to the sqlite redo log database file is: %s%s%s", path, File.separator, dbName));
+        log.log(Level.INFO, "Beginning processing...");
 
         DBSwapRedoLogFileConfig<IReplicationOrderedPacket> config =
                 new DBSwapRedoLogFileConfig<>(spaceName, containerName, 0);
         config.setKeepDatabaseFile(true);
-
+        int count = 0;
         SqliteRedoLogFileStorage<IReplicationOrderedPacket> redoLogFile = new SqliteRedoLogFileStorage<>(config);
         StorageReadOnlyIterator<IReplicationOrderedPacket> readOnlyIterator = redoLogFile.readOnlyIterator(0);
         while (readOnlyIterator.hasNext()) {
             IReplicationOrderedPacket packet = readOnlyIterator.next();
             processPacket(packet.getData());
+            count ++;
+            if (count % 100 == 0 ) {
+                log.log(Level.INFO, String.format("Processed %d records", count));
+            }
         }
+        log.log(Level.INFO, "End processing.");
         //out.flush();
         //out.close();
 
@@ -249,52 +267,66 @@ public class DeserializeRedoLog {
                     outputFileName = sArray[1];
                 }
                 else {
-                    System.out.println("Please enter valid arguments.");
+                    say("Please enter valid arguments.");
                     printUsage();
                     System.exit(-1);
                 }
                 i++;
             }
         } catch( Exception e ) {
-            e.printStackTrace();
-            FlushRedoLogToDisk.printUsage();
+            log.log(Level.SEVERE, "Error processing command line arguments.", e);
+            printUsage();
             System.exit(-1);
         }
     }
 
+    private void checkArgs() {
+        log.log(Level.INFO, "Verify home is correct (should be set as vm arg -Dcom.gs.home): " + SystemLocations.singleton().home());
+
+        File f = new File(outputFileName);
+        log.log(Level.INFO, "Output filename (yaml) is: " + f.getAbsolutePath());
+        if (f.exists() ) {
+            log.log(Level.WARNING, "Output filename already exists. Output will be appended to this file.");
+        }
+    }
     public static void printUsage() {
-        System.out.println("This program reads the contents of the GigaSpaces redo log and writes it into readable format (yaml).");
-        System.out.println("The following arguments are accepted:");
-        System.out.println("  --spaceName=<space name>");
-        System.out.println("    The name of the space to connect to. This argument is required.");
-        System.out.println("  --containerName=<container name>");
-        System.out.println("    The container name is the name of the partition. This argument is required.");
-        System.out.println("  --outputFileName=</path/to/outputfile.yaml>");
-        System.out.println("    The output filename is where the yaml is written. By default it is \"myredolog.yaml\".");
-        System.out.println("  --help");
-        System.out.println("    Display this help message and exit.");
-        System.out.println();
-        System.out.println("In addition, the following Java System Properties should be set:");
-        System.out.println("  -Dcom.gs.home=<the backup location where you have copied the work/redo-log directories");
+        StringBuffer sb = new StringBuffer();
+        sb.append(String.format("This program reads the contents of the GigaSpaces redo log and writes it into readable format (yaml).%n"));
+        sb.append(String.format("The following arguments are accepted:%n"));
+        sb.append(String.format("  --spaceName=<space name>%n"));
+        sb.append(String.format("    The name of the space to connect to. This argument is required.%n"));
+        sb.append(String.format("  --containerName=<container name>%n"));
+        sb.append(String.format("    The container name is the name of the partition. This argument is required.%n"));
+        sb.append(String.format("  --outputFileName=</path/to/outputfile.yaml>%n"));
+        sb.append(String.format("    The output filename is where the yaml is written. By default it is \"myredolog.yaml\".%n"));
+        sb.append(String.format("  --help%n"));
+        sb.append(String.format("    Display this help message and exit.%n"));
+        sb.append(String.format("%n"));
+        sb.append(String.format("In addition, the following Java System Properties should be set:%n"));
+        sb.append(String.format("  -Dcom.gs.home=<the backup location where you have copied the work/redo-log directories%n"));
+        sb.append(String.format("  -Djava.util.logging.FileHandler.pattern=</path/to/logfile.log>. This is optional.%n"));
+        say(sb.toString());
     }
 
+    private static void say(String s) {
+        System.out.println(s);
+
+        log.log(Level.INFO, s);
+    }
 
     public static void main(String[] args) throws Exception {
+
+        LoggerUtil.initialize();
+
+        log = LoggerUtil.getLogger(DeserializeRedoLog.class.getName());
+
+        log.log(Level.INFO, "Begin DeserializeRedoLog...");
+
         DeserializeRedoLog deserializeRedoLog = new DeserializeRedoLog();
         deserializeRedoLog.processArgs(args);
 
-        /*
-        if (args != null && args.length == 3) {
-            spaceName = args[0];
-            containerName = args[1];
-            outputFileName = args[2];
-        }
-*/
-
-
         //deserializeRedoLog.out =  new BufferedWriter(new FileWriter(fileName));
-        System.out.println("Verify home is correct should be set as vm arg:" + SystemLocations.singleton().home());
-        System.out.println("Target redoLog file:" + new File(deserializeRedoLog.outputFileName).getAbsolutePath());
+        deserializeRedoLog.checkArgs();
 
 
         deserializeRedoLog.readCodeMap();
@@ -302,6 +334,7 @@ public class DeserializeRedoLog {
         deserializeRedoLog.process();
         deserializeRedoLog.close();
 
-        System.out.println("Done.");
+        log.log(Level.INFO,"DeserializeRedoLog done.");
+        System.exit(0);
     }
 }
