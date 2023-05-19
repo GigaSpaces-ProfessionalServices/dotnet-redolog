@@ -10,8 +10,12 @@ import java.util.LinkedList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class FlushRedoLogToDisk {
+
+    static Logger log;
 
     private String spaceName;
 
@@ -31,40 +35,53 @@ public class FlushRedoLogToDisk {
                     spaceName = sArray[1];
                 }
                 else {
-                    System.out.println("Please enter valid arguments.");
+                    say(String.format("Please enter valid arguments."));
                     printUsage();
                     System.exit(-1);
                 }
                 i++;
             }
         } catch( Exception e ) {
-            e.printStackTrace();
-            FlushRedoLogToDisk.printUsage();
+            log.log(Level.SEVERE, "Error processing command line arguments.", e);
+            printUsage();
             System.exit(-1);
         }
     }
 
     public static void printUsage() {
-        System.out.println("This program flushes the redo log to disk.");
-        System.out.println("The following arguments are accepted:");
-        System.out.println("  --spaceName=<space name>");
-        System.out.println("    The name of the space to connect to. This argument is required.");
-        System.out.println("  --help");
-        System.out.println("    Display this help message and exit.");
-        System.out.println();
-        System.out.println("In addition, the following Java System Properties should be set:");
-        System.out.println("  -Dcom.gs.jini_lus.groups=<lookup group>");
-        System.out.println("  -Dcom.gs.jini_lus.locators=<lookup locators");
+        StringBuffer sb = new StringBuffer();
+
+        sb.append(String.format("This program flushes the redo log to disk.%n"));
+        sb.append(String.format("The following arguments are accepted:%n"));
+        sb.append(String.format("  --spaceName=<space name>%n"));
+        sb.append(String.format("    The name of the space to connect to. This argument is required.%n"));
+        sb.append(String.format("  --help%n"));
+        sb.append(String.format("    Display this help message and exit.%n"));
+        sb.append(String.format("%n"));
+        sb.append(String.format("In addition, the following Java System Properties should be set:%n"));
+        sb.append(String.format("  -Dcom.gs.jini_lus.groups=<lookup group>%n"));
+        sb.append(String.format("  -Dcom.gs.jini_lus.locators=<lookup locators%n"));
+        say(sb.toString());
+    }
+
+    private static void say(String s) {
+        System.out.println(s);
+
+        log.log(Level.INFO, s);
     }
 
     public void executeTask() throws Exception {
         GigaSpace gs = new GigaSpaceConfigurer(new SpaceProxyConfigurer(spaceName)).gigaSpace();
         AsyncFuture<Integer> execute = gs.execute(new FlushRedoLogTask(spaceName));
         Integer totalFlushedPackets = execute.get(60, TimeUnit.SECONDS);
-        System.out.println("totalFlushedPackets = " + totalFlushedPackets);
+        log.log(Level.INFO, "totalFlushedPackets = " + totalFlushedPackets);
     }
 
     public static void main(String[] args) {
+        LoggerUtil.initialize();
+        
+        log = LoggerUtil.getLogger(FlushRedoLogToDisk.class.getName());
+
         try {
             FlushRedoLogToDisk flushRedoLogToDisk = new FlushRedoLogToDisk();
             flushRedoLogToDisk.processArgs(args);
@@ -74,8 +91,9 @@ public class FlushRedoLogToDisk {
             }
             flushRedoLogToDisk.executeTask();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.log(Level.WARNING, "Exception occurred while flushing redo log to disk", e);
             System.exit(-1);
         }
+        System.exit(0);
     }
 }
