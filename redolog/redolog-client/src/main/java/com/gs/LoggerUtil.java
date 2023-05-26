@@ -7,18 +7,22 @@ import java.util.logging.*;
 
 public class LoggerUtil {
     private static final Logger logger = Logger.getLogger(LoggerUtil.class.getName());
-    //private static final String LOG_PROPERTIES_FILE = "src\\main\\resources\\logging.properties";
+    private static String logPropertiesFile;
+
     private static boolean isInitialized = false;
 
     public static void initialize() {
         if (!isInitialized) {
             try {
-                ClassLoader classLoader = LoggerUtil.class.getClassLoader();
-                File file = new File(classLoader.getResource("logging.properties").getFile());
-                LogManager.getLogManager().readConfiguration(new FileInputStream(file));
-
-
-                //LogManager.getLogManager().readConfiguration(new FileInputStream(LOG_PROPERTIES_FILE));
+                logPropertiesFile = System.getProperty("log_properties_file");
+                if (logPropertiesFile != null) {
+                    LogManager.getLogManager().readConfiguration(new FileInputStream(logPropertiesFile));
+                }
+                else {
+                    ClassLoader classLoader = LoggerUtil.class.getClassLoader();
+                    File file = new File(classLoader.getResource("logging.properties").getFile());
+                    LogManager.getLogManager().readConfiguration(new FileInputStream(file));
+                }
                 isInitialized = true;
                 registerShutdownHook();
             } catch (IOException e) {
@@ -33,7 +37,6 @@ public class LoggerUtil {
         }
         return Logger.getLogger(loggerName);
     }
-
     private static void registerShutdownHook() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             LogManager.getLogManager().reset();
