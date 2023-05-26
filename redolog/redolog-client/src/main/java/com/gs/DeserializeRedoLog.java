@@ -101,6 +101,7 @@ public class DeserializeRedoLog {
             }
         }
         log.log(Level.INFO, "End processing.");
+        log.log(Level.INFO, String.format("Total number of records: %d", count));
         //out.flush();
         //out.close();
 
