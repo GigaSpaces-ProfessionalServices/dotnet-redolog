@@ -305,7 +305,7 @@ public class DeserializeRedoLog {
         sb.append(String.format("%n"));
         sb.append(String.format("In addition, the following Java System Properties should be set:%n"));
         sb.append(String.format("  -Dcom.gs.home=<the backup location where you have copied the work/redo-log directories%n"));
-        sb.append(String.format("  -Djava.util.logging.FileHandler.pattern=</path/to/logfile.log>. This is optional.%n"));
+        sb.append(String.format("  -Dlog_properties_file=</path/to/overridden/logging.properties>. This is optional.%n"));
         say(sb.toString());
     }
 
