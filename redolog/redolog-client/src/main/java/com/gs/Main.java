@@ -14,6 +14,10 @@ public class Main {
         sb.append(String.format("1. FlushRedoLogToDisk <followed by arguments to be passed to FlushRedoLogToDisk>%n"));
         sb.append(String.format(" Or %n"));
         sb.append(String.format("2. DeserializeRedoLog <followed by arguments to be passed to DeserializeRedoLog>%n"));
+        sb.append(String.format(" Or %n"));
+        sb.append(String.format("3. RemoteDeserializeRedoLog <followed by arguments to be passed to RemoteDeserializeRedoLog>%n"));
+        sb.append(String.format(" Or %n"));
+        sb.append(String.format("4. RemoteDownloadfiles <followed by arguments to be passed to RemoteDownloadfiles>%n"));
     }
     private static void say(String s) {
         System.out.println(s);
@@ -40,6 +44,9 @@ public class Main {
                 String[] newArgs = Arrays.copyOfRange(args, 1, args.length);
                 log.log(Level.INFO, "DeserializeRedoLog being called...");
                 DeserializeRedoLog.main(newArgs);
+            } else if ("RemoteDeserializeRedoLog".equalsIgnoreCase(args[0]) || "RemoteDownloadfiles".equalsIgnoreCase(args[0])) {
+                log.log(Level.INFO, "RemoteDeserializeRedoLog being called...");
+                RemoteCommandExecutor.main(args);
             } else {
                 printUsage();
                 System.exit(-1);
