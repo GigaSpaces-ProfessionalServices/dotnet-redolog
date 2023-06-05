@@ -1,6 +1,7 @@
 ﻿using GigaSpaces.Core;
 using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
+using System.Linq;
 
 
 /*
@@ -35,6 +36,7 @@ namespace ReadRedoLogContents
         private string? lookupGroups;
         private string? redoLogFileName;
         private string? assemblyFileName;
+        private string[] redoLogFiles;
 
         private ISpaceProxy? spaceProxy;
         private SpaceReplay? spaceReplay;
@@ -142,7 +144,10 @@ namespace ReadRedoLogContents
                 printUsage();
                 Environment.Exit(-1);
             }
-            if ( ! File.Exists(redoLogFileName) ||
+            string searchPattern = "deserializeRedolog_"+spaceName+"*.txt";//deserializeRedolog_dataExampleSpace_container1 
+            redoLogFiles = Directory.GetFiles(redoLogFileName, searchPattern, SearchOption.AllDirectories);
+
+            if ( redoLogFiles.Length == 0 ||
                  ! File.Exists(assemblyFileName))
             {
                 Console.WriteLine("The redoLogFileName or assemblyFileName must exist.");
@@ -164,54 +169,64 @@ namespace ReadRedoLogContents
             var deserializer = new DeserializerBuilder()
                     .WithNamingConvention(CamelCaseNamingConvention.Instance)
                     .Build();
-            
-            var p = deserializer.Deserialize <List<Record>>(File.OpenText(redoLogFileName));
 
-            int count = 0;
-            int writeCount = 0;
-            int removeCount = 0;
-            int changeCount = 0;
-            foreach (var record in p)
+
+            var tasks = redoLogFiles.Select(redoLogFile =>
             {
-                string operand = record.Opr;
+                return Task.Run(() =>
+                {
+                    var p = deserializer.Deserialize<List<Record>>(File.OpenText(redoLogFile));
+                    Logger.Info("Started {0}", redoLogFile);
+                    int count = 0;
+                    int writeCount = 0;
+                    int removeCount = 0;
+                    int changeCount = 0;
+                    foreach (var record in p)
+                    {
+                        string operand = record.Opr;
 
-                if (string.Equals(operand, "write", StringComparison.OrdinalIgnoreCase)) {
-                    Logger.Info("Processing write...");
-                    Logger.Info("record is: " + record);
-                    spaceReplay.write(record);
-                    writeCount++;
-                }
-                else if (string.Equals(operand, "remove", StringComparison.OrdinalIgnoreCase))
-                {
-                    Logger.Info("Processing remove...");
-                    Logger.Info("record is: " + record);
-                    spaceReplay.remove(record);
-                    removeCount++;
-                }
-                else if (string.Equals(operand, "change", StringComparison.OrdinalIgnoreCase))
-                {
-                    Logger.Info("Processing change...");
-                    Logger.Info("record is: " + record);
-                    spaceReplay.change(record);
-                    changeCount++;
-                }
-                else
-                {
-                    Logger.Error("Unsupported redo log operand: {0}", operand);
-                }
+                        if (string.Equals(operand, "write", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.Info("Processing write...");
+                            Logger.Info("record is: " + record);
+                            spaceReplay.write(record);
+                            writeCount++;
+                        }
+                        else if (string.Equals(operand, "remove", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.Info("Processing remove...");
+                            Logger.Info("record is: " + record);
+                            spaceReplay.remove(record);
+                            removeCount++;
+                        }
+                        else if (string.Equals(operand, "change", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.Info("Processing change...");
+                            Logger.Info("record is: " + record);
+                            spaceReplay.change(record);
+                            changeCount++;
+                        }
+                        else
+                        {
+                            Logger.Error("Unsupported redo log operand: {0}", operand);
+                        }
 
-                count++;
-                if (count % 10 == 0)
-                {
-                    Logger.Info("The number of records processed is: " + count);
-                }
-            }
-            Logger.Info("Done.");
-            Logger.Info("Printing summary information:");
-            Logger.Info("Total number of records processed: {0}", count);
-            Logger.Info("{0}Total number of writes processed: {1}", INDENT, writeCount);
-            Logger.Info("{0}Total number of removes processed: {1}", INDENT, removeCount);
-            Logger.Info("{0}Total number of changes processed: {1}", INDENT, changeCount);
+                        count++;
+                        if (count % 10 == 0)
+                        {
+                            Logger.Info("The number of records processed is: " + count);
+                        }
+                    }
+                    Logger.Info("Done {0}", redoLogFile);
+                    Logger.Info("Printing summary information:");
+                    Logger.Info("Total number of records processed: {0}", count);
+                    Logger.Info("{0}Total number of writes processed: {1}", INDENT, writeCount);
+                    Logger.Info("{0}Total number of removes processed: {1}", INDENT, removeCount);
+                    Logger.Info("{0}Total number of changes processed: {1}", INDENT, changeCount);
+                });
+            }).ToArray();
+            Task.WaitAll(tasks);
+            Logger.Info("Done executing all files");
         }
     }
 
