@@ -14,14 +14,26 @@ public class LoggerUtil {
     public static void initialize() {
         if (!isInitialized) {
             try {
+                // read from file on disk
                 logPropertiesFile = System.getProperty("log_properties_file");
                 if (logPropertiesFile != null) {
                     LogManager.getLogManager().readConfiguration(new FileInputStream(logPropertiesFile));
                 }
                 else {
-                    ClassLoader classLoader = LoggerUtil.class.getClassLoader();
-                    File file = new File(classLoader.getResource("logging.properties").getFile());
-                    LogManager.getLogManager().readConfiguration(new FileInputStream(file));
+                    // read resource when packaged as an executable jar
+                    java.io.InputStream inputStream = LoggerUtil.class.getClassLoader().getResourceAsStream("logging.properties");
+
+                    if (inputStream != null) {
+                        LogManager.getLogManager().readConfiguration(inputStream);
+                    }
+                    else {
+                        // read resource when run as standalone, such as Intellij configuration
+                        ClassLoader classLoader = LoggerUtil.class.getClassLoader();
+                        File file = new File(classLoader.getResource("logging.properties").getFile());
+
+                        LogManager.getLogManager().readConfiguration(new FileInputStream(file));
+                    }
+
                 }
                 isInitialized = true;
                 registerShutdownHook();
