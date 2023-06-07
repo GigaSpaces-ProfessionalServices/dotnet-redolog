@@ -315,27 +315,34 @@ public class DeserializeRedoLog {
         log.log(Level.INFO, s);
     }
 
-    public static void main(String[] args) throws Exception {
-
-        LoggerUtil.initialize();
-
-        log = LoggerUtil.getLogger(DeserializeRedoLog.class.getName());
-
-        log.log(Level.INFO, "Begin DeserializeRedoLog...");
-
-        DeserializeRedoLog deserializeRedoLog = new DeserializeRedoLog();
-        deserializeRedoLog.processArgs(args);
-
-        //deserializeRedoLog.out =  new BufferedWriter(new FileWriter(fileName));
-        deserializeRedoLog.checkArgs();
+    public static void main(String[] args) {
+        try {
 
 
-        deserializeRedoLog.readCodeMap();
-        deserializeRedoLog.initializeMapper();
-        deserializeRedoLog.process();
-        deserializeRedoLog.close();
+            LoggerUtil.initialize();
 
-        log.log(Level.INFO,"DeserializeRedoLog done.");
-        System.exit(0);
+            log = LoggerUtil.getLogger(DeserializeRedoLog.class.getName());
+
+            log.log(Level.INFO, "Begin DeserializeRedoLog...");
+
+            DeserializeRedoLog deserializeRedoLog = new DeserializeRedoLog();
+            deserializeRedoLog.processArgs(args);
+
+            //deserializeRedoLog.out =  new BufferedWriter(new FileWriter(fileName));
+            deserializeRedoLog.checkArgs();
+
+
+            deserializeRedoLog.readCodeMap();
+            deserializeRedoLog.initializeMapper();
+            deserializeRedoLog.process();
+            deserializeRedoLog.close();
+
+            log.log(Level.INFO, "DeserializeRedoLog done.");
+            System.exit(0);
+        }
+        catch (Exception e) {
+            log.log(Level.SEVERE, "Error in DeserializeRedoLog", e);
+            System.exit(-1);
+        }
     }
 }
