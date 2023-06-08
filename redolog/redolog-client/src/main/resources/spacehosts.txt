@@ -1,0 +1,13 @@
+# example configuration file
+[
+	{
+		"host" : "hostname1",
+		"username" : "username1",
+		"password" : "pass1"
+	},
+	{
+		"host" : "hostname2",
+		"username" : "username2",
+		"password" : "pass2"
+	}
+]
