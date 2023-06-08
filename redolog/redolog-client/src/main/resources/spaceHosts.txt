@@ -1,4 +1,3 @@
-# example configuration file
 [
 	{
 		"host" : "hostname1",
