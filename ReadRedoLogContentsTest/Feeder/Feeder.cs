@@ -1,4 +1,5 @@
 ﻿using GigaSpaces.Core;
+using GigaSpaces.Core.Document;
 using ReadRedoLogContentsTest.Common;
 using System.Configuration;
 using System.Security.Cryptography;
@@ -18,6 +19,7 @@ namespace ReadRedoLogContentsTest
         private Data testData2 = createTestData2();
 
         private Order testOrder1 = createTestOrder1();
+        private OrderWrongDefaultValue testOrderWrongDefaultValue1 = createTestOrderWrongDefaultValue1();
 
         private static Order createTestOrder1()
         {
@@ -28,6 +30,16 @@ namespace ReadRedoLogContentsTest
             order.CalExecValue = 4;
             return order;
         }
+        private static OrderWrongDefaultValue createTestOrderWrongDefaultValue1()
+        {
+            OrderWrongDefaultValue order = new OrderWrongDefaultValue();
+            order.Id = 1;
+            order.Info = "testOrderWrongDefaultValue1";
+            order.CalCumQty = 8;
+            order.CalExecValue = 4;
+            return order;
+        }
+
         private static Data createTestData1()
         {
             Data data = new Data();
@@ -71,8 +83,25 @@ namespace ReadRedoLogContentsTest
                 calExecValue == (newOrder.CalExecValue.HasValue? newOrder.CalExecValue: 0);
                 
         }
+        // the difference between this and the OrderAfterChangeEquals is that it doesn't rely on template matching and uses idQuery
+        // both in the SpaceReplay and in this test.
+        private bool orderWrongDefaultValueAfterChangeEquals(OrderWrongDefaultValue original, OrderWrongDefaultValue newOrder)
+        {
 
-        public void configure()
+            double calExecValue = (original.CalExecValue.HasValue ? original.CalExecValue.Value : 0);
+
+            calExecValue += 15.0;
+            long calCumQty = original.CalCumQty + 10;
+
+            return
+                original.Id == newOrder.Id &&
+                original.Info.Equals(newOrder.Info) &&
+                calCumQty == newOrder.CalCumQty &&
+                calExecValue == (newOrder.CalExecValue.HasValue ? newOrder.CalExecValue : 0);
+
+        }
+
+        public void Configure()
         {
             spaceName      = ConfigurationManager.AppSettings.Get("spaceName");
             lookupLocators = ConfigurationManager.AppSettings.Get("locators");
@@ -91,6 +120,7 @@ namespace ReadRedoLogContentsTest
             spaceProxy.Write(testData1);
             spaceProxy.Write(testData2);
             spaceProxy.Write(testOrder1);
+            spaceProxy.Write(testOrderWrongDefaultValue1);
         }
         private void change()
         {
@@ -111,6 +141,24 @@ namespace ReadRedoLogContentsTest
             else
             {
                 Console.WriteLine("orderChangeResults.NumberOfChangedEntries is: {0}", orderChangeResults.NumberOfChangedEntries );
+            }
+        }
+        private void changeWrongDefaultValue()
+        {
+            IdQuery<OrderWrongDefaultValue> idQuery = new IdQuery<OrderWrongDefaultValue>(1L);
+
+
+            ChangeSet orderChange = new ChangeSet();
+            orderChange.Increment("CalCumQty", 10L);
+            orderChange.Increment("CalExecValue", 15.0d);
+            IChangeResult<object> orderChangeResults = spaceProxy.Change<object>(idQuery, orderChange);
+            if (orderChangeResults == null)
+            {
+                Console.WriteLine("orderChangeResults for wrong default value test is null.");
+            }
+            else
+            {
+                Console.WriteLine("orderChangeResults.NumberOfChangedEntries for wrong default value test is: {0}", orderChangeResults.NumberOfChangedEntries);
             }
         }
         private void take()
@@ -138,6 +186,7 @@ namespace ReadRedoLogContentsTest
             }
             write();
             change();
+            changeWrongDefaultValue();
             take();
         }
         private void verifyTestData1()
@@ -171,14 +220,34 @@ namespace ReadRedoLogContentsTest
 
         }
 
+        private void verifyChangeWrongDefaultValue()
+        {
+            IdQuery<OrderWrongDefaultValue> idQuery = new IdQuery<OrderWrongDefaultValue>(1L);
+
+
+            OrderWrongDefaultValue order = spaceProxy.ReadById(idQuery);
+            bool same = false;
+            if (order != null)
+            {
+                same = orderWrongDefaultValueAfterChangeEquals(testOrderWrongDefaultValue1, order);
+            }
+            else
+            {
+                Console.WriteLine("OrderWrongDefaultValue read was null.");
+            }
+            Console.WriteLine("verifying with testOrderWrongDefaultValue1 after change. Return value is same: " + same);
+
+        }
+
 
         public static void Main(string[] args)
         {
             Feeder feeder = new Feeder();
-            feeder.configure();
+            feeder.Configure();
             feeder.makeUpdates();
             feeder.verifyTestData1();
             feeder.verifyChange();
+            feeder.verifyChangeWrongDefaultValue();
 
         }
     }
