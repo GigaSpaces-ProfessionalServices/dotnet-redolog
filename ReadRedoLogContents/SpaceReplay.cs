@@ -1,4 +1,5 @@
 ﻿using GigaSpaces.Core;
+using GigaSpaces.Core.Document;
 using GigaSpaces.Core.Metadata;
 using NLog;
 using System.Reflection;
@@ -10,8 +11,6 @@ namespace ReadRedoLogContents
      */
     internal class SpaceReplay
     {
-        static object lockObject = new object();
-
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
 
         private ISpaceProxy _proxy;
@@ -47,28 +46,25 @@ namespace ReadRedoLogContents
         }
         private string[] getSortedPropertyNamesFromTypeName(string typeName, Type entryType)
         {
-            lock (lockObject)
+            if(typeNameSortedPropertyNamesPairs.ContainsKey(typeName))
             {
-                if (typeNameSortedPropertyNamesPairs.ContainsKey(typeName))
+                return typeNameSortedPropertyNamesPairs[typeName]; 
+            }
+            else
+            {
+                PropertyInfo[] propertyInfo = entryType.GetProperties();
+
+                string[] propertyNames = new string[propertyInfo.Length];
+
+                for (int i = 0; i < propertyInfo.Length; i++)
                 {
-                    return typeNameSortedPropertyNamesPairs[typeName];
+                    propertyNames[i] = propertyInfo[i].Name;
                 }
-                else
-                {
-                    PropertyInfo[] propertyInfo = entryType.GetProperties();
 
-                    string[] propertyNames = new string[propertyInfo.Length];
+                Array.Sort(propertyNames);
 
-                    for (int i = 0; i < propertyInfo.Length; i++)
-                    {
-                        propertyNames[i] = propertyInfo[i].Name;
-                    }
-
-                    Array.Sort(propertyNames);
-
-                    typeNameSortedPropertyNamesPairs.Add(typeName, propertyNames);
-                    return propertyNames;
-                }
+                typeNameSortedPropertyNamesPairs.Add(typeName, propertyNames);
+                return propertyNames;
             }
         }
         private ISpaceTypeDescriptor registerAndGetTypeDescriptor(Type entryType)
@@ -83,9 +79,6 @@ namespace ReadRedoLogContents
         }
 
         public void write(Record record) {
-            // create a new empty object
-            // populate its properties
-            // write it to the space
             string sType = record.Type;
             Logger.Info("sType is: " + sType);
 
@@ -123,7 +116,7 @@ namespace ReadRedoLogContents
         public void remove(Record record)
         {
             // get the id
-            // create a template and set the id
+            // create an idQuery and set the id
             // call Take
             string sType = record.Type;
             Logger.Info("sType is: " + sType);
@@ -136,9 +129,10 @@ namespace ReadRedoLogContents
             Type entryType = getTypeFromTypeName(sType, _assembly);
 
             string sId = parseIdStringFromUid(record.Uid);
-            object templateQuery = createIdTemplate(sType, sId);
+            //object templateQuery = createIdTemplate(sType, sId);
+            IQuery<SpaceDocument> idQuery = getIdQuery(sType, sId);
 
-            var returnValue = _proxy.Take(templateQuery);
+            var returnValue = _proxy.Take(idQuery);
 
             if (returnValue == null)
             {
@@ -153,10 +147,7 @@ namespace ReadRedoLogContents
 
         public void change(Record record)
         {
-            // create the template for querying
-            // the template will contain its id property only
-            // parse the Changes field in the record to create a ChangeSet object
-            // call the GigaSpaces.change API
+
             string sType = record.Type;
             Logger.Info("sType is: " + sType);
             Logger.Debug("record.Changes is: " + record.Changes);
@@ -174,7 +165,10 @@ namespace ReadRedoLogContents
             // create the changeSet
             ChangeSet changeSet = ChangeContentParser.parse(record.Changes, entryType);
 
-            IChangeResult<object> changeResult = _proxy.Change<object>(templateQuery, changeSet);
+            IQuery<SpaceDocument> idQuery = getIdQuery(sType, sId);
+            IChangeResult<object> changeResult = _proxy.Change<object>(idQuery, changeSet);
+
+            //IChangeResult<object> changeResult = _proxy.Change<object>(templateQuery, changeSet);
             if (changeResult == null)
             {
                 Logger.Info("changeResult is null.");
@@ -185,13 +179,24 @@ namespace ReadRedoLogContents
             }
 
         }
-        /*
-           Template matching is a way to match objects in the space.
-           Briefly, a POCO template is instantiated. Any property that is null is treated as a wild card.
-           If a property is set, the template matches based on equality.
-           The template can then be passed into various GigaSpaces APIs, such as read, take.
-           See: https://docs.gigaspaces.com/latest/dev-dotnet/query-template-matching.html
-         */
+        
+        private IQuery<SpaceDocument> getIdQuery(string sType, string sId)
+        {
+            if (_assembly == null)
+            {
+                initAssembly();
+            }
+            var entry = _assembly.CreateInstance(sType);
+            Type entryType = getTypeFromTypeName(sType, _assembly);
+
+            ISpaceTypeDescriptor spaceTypeDescriptor = registerAndGetTypeDescriptor(entryType);
+
+            string idPropertyName = spaceTypeDescriptor.IdPropertyName;
+            PropertyInfo idProperty = entryType.GetProperty(idPropertyName);
+            object idPropertyValue = convertStringToObject(idProperty.PropertyType, sId);
+
+            return new IdQuery<SpaceDocument>(sType, idPropertyValue);
+        }
         private object createIdTemplate(string sType, string sId)
         {
             if (_assembly == null)
