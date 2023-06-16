@@ -10,7 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RemoteCommandExecutor {
-    String scriptLocation;
+    String resourceLocation;
+    String configLocation;
     String spaceName;
     String sourceBaseDirCopyPath;
     String redologBackupPath;
@@ -51,9 +52,12 @@ public class RemoteCommandExecutor {
                 } else if (sUpper.startsWith("--redologBackupPath".toUpperCase())) {
                     String[] sArray = s.split("=", 2);
                     redologBackupPath = sArray[1];
-                } else if (sUpper.startsWith("--scriptLocation".toUpperCase())) {
+                } else if (sUpper.startsWith("--configLocation".toUpperCase())) {
                     String[] sArray = s.split("=", 2);
-                    scriptLocation = sArray[1];
+                    configLocation = sArray[1];
+                } else if (sUpper.startsWith("--resourceLocation".toUpperCase())) {
+                    String[] sArray = s.split("=", 2);
+                    resourceLocation = sArray[1];
                 } else if (sUpper.startsWith("--spaceName".toUpperCase())) {
                     String[] sArray = s.split("=", 2);
                     spaceName = sArray[1];
@@ -82,7 +86,8 @@ public class RemoteCommandExecutor {
 
         System.out.println("  --gsHome=<xap home>");
         System.out.println("    Path of installed gigaspaces smart cache. This argument is required.");
-        System.out.println("  --scriptLocation=<script location>");
+        System.out.println("  --resourceLocation=<script location>");
+        System.out.println("  --configLocation=<config location>");
         System.out.println("    Path of recovery scripts. This argument is required.");
         System.out.println("  --targetDir=<target directory to copy redo log files>");
         System.out.println("    The name of the space to connect to. This argument is required.");
@@ -103,7 +108,7 @@ public class RemoteCommandExecutor {
         JSONParser parser = new JSONParser();
         JSONArray configArray;
         try {
-            configArray = (JSONArray) parser.parse(new FileReader(scriptLocation + "\\" + hostFileName));
+            configArray = (JSONArray) parser.parse(new FileReader(configLocation + "\\" + hostFileName));
         } catch (Exception e) {
             System.out.println("Failed to read configuration file: " + e.getMessage());
             return;
@@ -232,4 +237,5 @@ public class RemoteCommandExecutor {
         }
     }
 }
+
 
