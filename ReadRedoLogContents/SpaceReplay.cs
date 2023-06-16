@@ -11,6 +11,8 @@ namespace ReadRedoLogContents
      */
     internal class SpaceReplay
     {
+        static object lockObject = new object();
+
         private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
 
         private ISpaceProxy _proxy;
@@ -33,38 +35,44 @@ namespace ReadRedoLogContents
         }
         private Type getTypeFromTypeName(string typeName, Assembly assembly)
         {
-            if( typeNameTypePairs.ContainsKey(typeName))
+            lock (lockObject)
             {
-                return typeNameTypePairs[typeName];
-            }
-            else
-            {
-                Type type = assembly.GetType(typeName);
-                typeNameTypePairs.Add(typeName, type);
-                return type;
+                if (typeNameTypePairs.ContainsKey(typeName))
+                {
+                    return typeNameTypePairs[typeName];
+                }
+                else
+                {
+                    Type type = assembly.GetType(typeName);
+                    typeNameTypePairs.Add(typeName, type);
+                    return type;
+                }
             }
         }
         private string[] getSortedPropertyNamesFromTypeName(string typeName, Type entryType)
         {
-            if(typeNameSortedPropertyNamesPairs.ContainsKey(typeName))
+            lock (lockObject)
             {
-                return typeNameSortedPropertyNamesPairs[typeName]; 
-            }
-            else
-            {
-                PropertyInfo[] propertyInfo = entryType.GetProperties();
-
-                string[] propertyNames = new string[propertyInfo.Length];
-
-                for (int i = 0; i < propertyInfo.Length; i++)
+                if (typeNameSortedPropertyNamesPairs.ContainsKey(typeName))
                 {
-                    propertyNames[i] = propertyInfo[i].Name;
+                    return typeNameSortedPropertyNamesPairs[typeName];
                 }
+                else
+                {
+                    PropertyInfo[] propertyInfo = entryType.GetProperties();
 
-                Array.Sort(propertyNames);
+                    string[] propertyNames = new string[propertyInfo.Length];
 
-                typeNameSortedPropertyNamesPairs.Add(typeName, propertyNames);
-                return propertyNames;
+                    for (int i = 0; i < propertyInfo.Length; i++)
+                    {
+                        propertyNames[i] = propertyInfo[i].Name;
+                    }
+
+                    Array.Sort(propertyNames);
+
+                    typeNameSortedPropertyNamesPairs.Add(typeName, propertyNames);
+                    return propertyNames;
+                }
             }
         }
         private ISpaceTypeDescriptor registerAndGetTypeDescriptor(Type entryType)

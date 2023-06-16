@@ -225,6 +225,10 @@ public class DeserializeRedoLog {
     }
     public void initializeMapper() throws IOException {
         File file = new File(outputFileName);
+        if(file.exists()){
+            file.delete();
+        }
+
         FileWriter fileWriter = new FileWriter(file, true);
 
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());

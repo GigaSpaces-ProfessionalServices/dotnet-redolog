@@ -28,7 +28,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <gs.version>16.2.1</gs.version>
+        <gs.version>16.3.0-patch-p-3</gs.version>
         <jackson.version>2.9.9</jackson.version>
     </properties>
 

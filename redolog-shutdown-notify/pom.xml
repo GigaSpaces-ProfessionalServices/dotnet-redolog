@@ -13,7 +13,7 @@
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <lib.dir>${project.basedir}</lib.dir>
-        <gs.version>16.2.1</gs.version>
+        <gs.version>16.3.0-patch-p-3</gs.version>
         <jna.version>5.6.0</jna.version>
     </properties>
     <repositories>
@@ -28,20 +28,20 @@
             <artifactId>xap-openspaces</artifactId>
             <version>${gs.version}</version>
             <scope>compile</scope>
-            <exclusions>
+           <!-- <exclusions>
                 <exclusion>
                     <groupId>org.gigaspaces</groupId>
                     <artifactId>xap-datagrid</artifactId>
                 </exclusion>
-            </exclusions>
+            </exclusions>-->
         </dependency>
-        <dependency>
+       <!-- <dependency>
             <groupId>csm</groupId>
             <artifactId>csm-datagrid</artifactId>
             <version>16.2.1-redolog</version>
             <scope>system</scope>
             <systemPath>${lib.dir}/lib/xap-datagrid-16.2.1-redolog.jar</systemPath>
-        </dependency>
+        </dependency>-->
         <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
