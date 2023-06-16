@@ -17,7 +17,8 @@ import java.util.Map;
 
 public class RemoteCommandExecutor {
     String gsHome;
-    String scriptLocation;
+    String resourceLocation;
+    String configLocation;
     String spaceName;
     String targetDir;
     String targetPathBaseDir;
@@ -26,8 +27,8 @@ public class RemoteCommandExecutor {
     String deserializeFullPath;
     String localFilePath = deserializeFullPath + "AllDeserializedFiles\\";
     final static String sqliteQuery = "select count(*) from REDO_LOGS;";
-    String queryTemplatecmd = "\"" + scriptLocation + "\\sqlite3\" \"" + targetDir;
-    String hostFileName = "spaceHosts.txt";
+    String queryTemplatecmd = "\"" + resourceLocation + "\\sqlite3\" \"" + targetDir;
+    String hostFileName = "spaceHosts.json";
 
     public static void main(String[] args) {
         RemoteCommandExecutor remoteCommandExecutor = new RemoteCommandExecutor();
@@ -63,15 +64,18 @@ public class RemoteCommandExecutor {
                 } else if (sUpper.startsWith("--gsHome".toUpperCase())) {
                     String[] sArray = s.split("=", 2);
                     gsHome = sArray[1];
-                } else if (sUpper.startsWith("--scriptLocation".toUpperCase())) {
+                } else if (sUpper.startsWith("--configLocation".toUpperCase())) {
                     String[] sArray = s.split("=", 2);
-                    scriptLocation = sArray[1];
-                    queryTemplatecmd = "\"" + scriptLocation + "\\sqlite3\" \"" + targetDir;
+                    configLocation = sArray[1];
+                } else if (sUpper.startsWith("--resourceLocation".toUpperCase())) {
+                    String[] sArray = s.split("=", 2);
+                    resourceLocation = sArray[1];
+                    queryTemplatecmd = "\"" + resourceLocation + "\\sqlite3\" \"" + targetDir;
                 } else if (sUpper.startsWith("--targetDir".toUpperCase())) {
                     String[] sArray = s.split("=", 2);
                     targetDir = sArray[1];
                     command = "dir \"" + targetDir.replace("\\\\","\\") + "\" /b";
-                    queryTemplatecmd = "\"" + scriptLocation + "\\sqlite3\" \"" + targetDir;
+                    queryTemplatecmd = "\"" + resourceLocation + "\\sqlite3\" \"" + targetDir;
                 } else if (sUpper.startsWith("--targetPathBaseDir".toUpperCase())) {
                     String[] sArray = s.split("=", 2);
                     targetPathBaseDir = sArray[1];
@@ -104,7 +108,8 @@ public class RemoteCommandExecutor {
 
         System.out.println("  --gsHome=<xap home>");
         System.out.println("    Path of installed gigaspaces smart cache. This argument is required.");
-        System.out.println("  --scriptLocation=<script location>");
+        System.out.println("  --resourceLocation=<resource location>");
+        System.out.println("  --configLocation=<config location>");
         System.out.println("    Path of recovery scripts. This argument is required.");
         System.out.println("  --targetDir=<target directory to copy redo log files>");
         System.out.println("    The name of the space to connect to. This argument is required.");
@@ -155,20 +160,20 @@ public class RemoteCommandExecutor {
 
     void deserializeFiles() {
  /*       String gsHome = "C:\\GigaSpaces\\smart-cache.net-16.2.1-x64\\NET v4.0\\";
-        String scriptLocation = gsHome + "automation-redo-log\\";
+        String resourceLocation = gsHome + "automation-redo-log\\";
         String spaceName = "dataExampleSpace";
         String targetDir = gsHome + "backup\\work\\redo-log\\" + spaceName;
 
         // String command = "dir C:\\";
         String command = "dir \"" + targetDir + "\" /b";
         String sqliteQuery = "select count(*) from REDO_LOGS;";
-        String queryTemplatecmd = "\"" + scriptLocation + "\\sqlite3\" \"" + targetDir;
+        String queryTemplatecmd = "\"" + resourceLocation + "\\sqlite3\" \"" + targetDir;
         String hostFileName = "spaceHosts.txt";*/
         JSONParser parser = new JSONParser();
         JSONArray configArray;
         List<String> fileNames = new ArrayList<>();
         try {
-            configArray = (JSONArray) parser.parse(new FileReader(scriptLocation + "\\" + hostFileName));
+            configArray = (JSONArray) parser.parse(new FileReader(configLocation + "\\" + hostFileName));
         } catch (Exception e) {
             System.out.println("Failed to read configuration file: " + e.getMessage());
             return;
@@ -230,9 +235,9 @@ public class RemoteCommandExecutor {
                 * */
                 String containerfileNamePartial = filename.substring(filename.indexOf(spaceName + "_container"));
                 String deserializeFullPath = this.deserializeFullPath +"\\"+fileNamePrefix+ containerfileNamePartial + ".txt";
-                //String deserializeCommand = "java -Dcom.gs.home=\"C:\\GigaSpaces\\smart-cache.net-16.2.1-x64\\NET v4.0\\backup\" -jar \"" + scriptLocation + "redolog-client-1.0-SNAPSHOT-jar-with-dependencies.jar\" DeserializeRedoLog " + spaceName + " " + containerfileNamePartial + " \"" + deserializeFullPath + "\"";
+                //String deserializeCommand = "java -Dcom.gs.home=\"C:\\GigaSpaces\\smart-cache.net-16.2.1-x64\\NET v4.0\\backup\" -jar \"" + resourceLocation + "redolog-client-1.0-SNAPSHOT-jar-with-dependencies.jar\" DeserializeRedoLog " + spaceName + " " + containerfileNamePartial + " \"" + deserializeFullPath + "\"";
 
-                String deserializeCommand = "java -Dcom.gs.home=\"" + targetPathBaseDir + "\" -jar \"" + scriptLocation + "redolog-client-1.0-SNAPSHOT-jar-with-dependencies.jar\" DeserializeRedoLog --spaceName=" + spaceName + " --containerName=" + containerfileNamePartial + " --outputFileName=\"" + deserializeFullPath + "\"";
+                String deserializeCommand = "java -Dcom.gs.home=\"" + targetPathBaseDir + "\" -jar \"" + resourceLocation + "redolog-client-1.0-SNAPSHOT-jar-with-dependencies.jar\" DeserializeRedoLog --spaceName=" + spaceName + " --containerName=" + containerfileNamePartial + " --outputFileName=\"" + deserializeFullPath + "\"";
                 System.out.println(fileInformation.getHostname() + " => " + deserializeCommand);
                 try {
                     executeremoteCommandAndGetOutput(fileInformation.getHostname(), fileInformation.getUsername(), fileInformation.getPassword(), deserializeCommand);
@@ -254,7 +259,7 @@ public class RemoteCommandExecutor {
     void downloadRemoteFile() {
 
 /*        String gsHome = "C:\\GigaSpaces\\smart-cache.net-16.2.1-x64\\NET v4.0\\";
-        String scriptLocation = gsHome + "automation-redo-log\\";
+        String resourceLocation = gsHome + "automation-redo-log\\";
         String deserializeFullPath = "C:\\GigaSpaces\\smart-cache.net-16.2.1-x64\\NET v4.0\\backup\\";
         String fileNamePrefix = "deserializeRedolog_";
         String localFilePath = deserializeFullPath + "AllDeserializedFiles\\";
@@ -263,7 +268,7 @@ public class RemoteCommandExecutor {
         JSONArray configArray;
         List<String> fileNames = new ArrayList<>();
         try {
-            configArray = (JSONArray) parser.parse(new FileReader(scriptLocation + "\\" + hostFileName));
+            configArray = (JSONArray) parser.parse(new FileReader(configLocation + "\\" + hostFileName));
         } catch (Exception e) {
             System.out.println("Failed to read configuration file: " + e.getMessage());
             return;
