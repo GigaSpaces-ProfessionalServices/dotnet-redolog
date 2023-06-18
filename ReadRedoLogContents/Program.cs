@@ -6,7 +6,7 @@ using System.Linq;
 
 /*
  * Notes: YamlDotNet.13.1.0
- *            
+ *
             var rec = new Record
             {
                 Opr = "write",
@@ -135,7 +135,7 @@ namespace ReadRedoLogContents
         private void checkParameters()
         {
             if( spaceName == null ||
-                lookupLocators == null || 
+                lookupLocators == null ||
                 lookupGroups == null ||
                 redoLogFileName == null ||
                 assemblyFileName == null)
@@ -144,7 +144,7 @@ namespace ReadRedoLogContents
                 printUsage();
                 Environment.Exit(-1);
             }
-            string searchPattern = "deserializeRedolog_"+spaceName+"*.txt";//deserializeRedolog_dataExampleSpace_container1 
+            string searchPattern = "deserializeRedolog_"+spaceName+"*.txt";//deserializeRedolog_dataExampleSpace_container1
             redoLogFiles = Directory.GetFiles(redoLogFileName, searchPattern, SearchOption.AllDirectories);
 
             if ( redoLogFiles.Length == 0 ||
@@ -157,12 +157,21 @@ namespace ReadRedoLogContents
         }
         private void Initialize()
         {
-            
+
             SpaceProxyFactory factory = new SpaceProxyFactory(spaceName);
             factory.LookupLocators = lookupLocators;
             factory.LookupGroups = lookupGroups;
 
-            spaceProxy = factory.Create();
+            try
+            {
+                spaceProxy = factory.Create();
+                spaceProxy.Count(new object());
+            }
+            catch (Exception e) {
+                Logger.Error(e.Message, e);
+                Console.WriteLine("Space verification failed. Please check & try again...");
+                return;
+            }
 
             spaceReplay = new SpaceReplay(spaceProxy, assemblyFileName);
 
