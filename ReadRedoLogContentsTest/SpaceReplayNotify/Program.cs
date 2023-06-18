@@ -83,7 +83,7 @@ namespace ReadRedoLogContentsTest
         {
             Program program = new Program();
             program.Configure();
-            program.CreateNotifyContainer();
+            //program.CreateNotifyContainer();
             program.CreateSpaceModeEventListener();
         }
     } 
