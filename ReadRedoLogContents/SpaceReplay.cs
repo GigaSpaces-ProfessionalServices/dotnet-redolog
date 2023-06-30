@@ -312,8 +312,14 @@ namespace ReadRedoLogContents
             {
                 if (fromValueType == typeof(string))
                 {
-                    long longValue = long.Parse((String)fromValue);
-                    return new DateTime(longValue);
+                    // long in millis from Java epoch 1970-01-01
+                    long longInMillis = long.Parse((String)fromValue);
+
+                    TimeSpan timeSpan = TimeSpan.FromMilliseconds(longInMillis);
+
+                    DateTime javaEpoch = new DateTime(1970, 01, 01);
+
+                    return javaEpoch.Add(timeSpan);
                 }
             }
             // it's either a string type or type not handled above 

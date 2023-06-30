@@ -11,6 +11,7 @@ namespace ReadRedoLogContentsTest.Common
         private long _id;
         private string _info;
         private Nullable<int> _type;
+        private DateTime? _date;
         private bool _processed;
 
         public Data()
@@ -47,6 +48,12 @@ namespace ReadRedoLogContentsTest.Common
         {
             get { return _info; }
             set { _info = value; }
+        }
+
+        public Nullable<DateTime> Date
+        {
+            get { return _date; }
+            set { _date = value; }
         }
         /// <summary>
         /// Gets or sets the data processed state
