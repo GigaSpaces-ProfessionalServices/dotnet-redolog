@@ -1,12 +1,11 @@
 ﻿using GigaSpaces.Core;
-using GigaSpaces.Core.Document;
 using ReadRedoLogContentsTest.Common;
 using System.Configuration;
-using System.Security.Cryptography;
+
 
 namespace ReadRedoLogContentsTest
 {
-    public class Feeder
+    public class ChangeTest
     {
 
         string? spaceName;
@@ -15,8 +14,6 @@ namespace ReadRedoLogContentsTest
         bool validateOnlyEnabled = false;
         ISpaceProxy? spaceProxy;
 
-        private Data testData1 = createTestData1();
-        private Data testData2 = createTestData2();
 
         private Order testOrder1 = createTestOrder1();
         private OrderWrongDefaultValue testOrderWrongDefaultValue1 = createTestOrderWrongDefaultValue1();
@@ -40,37 +37,11 @@ namespace ReadRedoLogContentsTest
             return order;
         }
 
-        private static Data createTestData1()
-        {
-            Data data = new Data();
-            data.Id = 1;
-            data.Info = "testData1";
-            data.Type = 1;
-            data.Processed = false;
-            return data;
-        }
-        private static Data createTestData2()
-        {
-            Data data = new Data();
-            data.Id = 2;
-            data.Info = "testData2";
-            data.Type = 2;
-            data.Processed = false;
-            return data;
-        }
 
-        bool dataEquals(Data? original, Data? newData)
-        {
-            return
-                original.Id == newData.Id &&
-                original.Info.Equals(newData.Info) &&
-                original.Processed == newData.Processed &&
-                original.Type == newData.Type;
-        }
 
         private bool orderAfterChangeEquals(Order original, Order newOrder)
         {
-            
+
             double calExecValue = (original.CalExecValue.HasValue ? original.CalExecValue.Value : 0);
 
             calExecValue += 15.0;
@@ -80,8 +51,8 @@ namespace ReadRedoLogContentsTest
                 original.Id == newOrder.Id &&
                 original.Info.Equals(newOrder.Info) &&
                 calCumQty == newOrder.CalCumQty &&
-                calExecValue == (newOrder.CalExecValue.HasValue? newOrder.CalExecValue: 0);
-                
+                calExecValue == (newOrder.CalExecValue.HasValue ? newOrder.CalExecValue : 0);
+
         }
         // the difference between this and the OrderAfterChangeEquals is that it doesn't rely on template matching and uses idQuery
         // both in the SpaceReplay and in this test.
@@ -103,9 +74,9 @@ namespace ReadRedoLogContentsTest
 
         public void Configure()
         {
-            spaceName      = ConfigurationManager.AppSettings.Get("spaceName");
+            spaceName = ConfigurationManager.AppSettings.Get("spaceName");
             lookupLocators = ConfigurationManager.AppSettings.Get("locators");
-            lookupGroups   = ConfigurationManager.AppSettings.Get("groups");
+            lookupGroups = ConfigurationManager.AppSettings.Get("groups");
             string sValidationOnlyEnabled = ConfigurationManager.AppSettings.Get("validateOnlyEnabled");
             validateOnlyEnabled = bool.Parse(sValidationOnlyEnabled);
 
@@ -117,8 +88,6 @@ namespace ReadRedoLogContentsTest
         }
         private void write()
         {
-            spaceProxy.Write(testData1);
-            spaceProxy.Write(testData2);
             spaceProxy.Write(testOrder1);
             spaceProxy.Write(testOrderWrongDefaultValue1);
         }
@@ -132,7 +101,7 @@ namespace ReadRedoLogContentsTest
 
             ChangeSet orderChange = new ChangeSet();
             orderChange.Increment("CalCumQty", 10L);
-            orderChange.Increment("CalExecValue", 15.0d);            
+            orderChange.Increment("CalExecValue", 15.0d);
             IChangeResult<object> orderChangeResults = spaceProxy.Change<object>(template, orderChange);
             if (orderChangeResults == null)
             {
@@ -140,7 +109,7 @@ namespace ReadRedoLogContentsTest
             }
             else
             {
-                Console.WriteLine("orderChangeResults.NumberOfChangedEntries is: {0}", orderChangeResults.NumberOfChangedEntries );
+                Console.WriteLine("orderChangeResults.NumberOfChangedEntries is: {0}", orderChangeResults.NumberOfChangedEntries);
             }
         }
         private void changeWrongDefaultValue()
@@ -161,22 +130,6 @@ namespace ReadRedoLogContentsTest
                 Console.WriteLine("orderChangeResults.NumberOfChangedEntries for wrong default value test is: {0}", orderChangeResults.NumberOfChangedEntries);
             }
         }
-        private void take()
-        {
-            Data template = new Data();
-            template.Id = 2;
-
-            Data returnValue = spaceProxy.Take<Data>(template);
-            if (returnValue == null)
-            {
-                Console.WriteLine("in take(), returnValue is null");
-            }
-            else
-            {
-                Console.WriteLine("in take(), returned item's id: {0}", returnValue.Id);
-            }
-
-        }
         private void makeUpdates()
         {
             if (validateOnlyEnabled == true)
@@ -187,25 +140,12 @@ namespace ReadRedoLogContentsTest
             write();
             change();
             changeWrongDefaultValue();
-            take();
-        }
-        private void verifyTestData1()
-        {
-            Data template = new Data();
-            template.Id = 1;
-            Data data = spaceProxy.Read(template);
-            bool same = false;
-            if (data != null)
-            {
-                same = dataEquals(testData1, data);
-            }
-            Console.WriteLine("verifying with testData1. Return value is same: " + same);
         }
         private void verifyChange()
         {
             Order template = new Order();
             template.Id = 1L;
-            
+
             Order order = spaceProxy.Read(template);
             bool same = false;
             if (order != null)
@@ -242,12 +182,11 @@ namespace ReadRedoLogContentsTest
 
         public static void Main(string[] args)
         {
-            Feeder feeder = new Feeder();
-            feeder.Configure();
-            feeder.makeUpdates();
-            feeder.verifyTestData1();
-            feeder.verifyChange();
-            feeder.verifyChangeWrongDefaultValue();
+            ChangeTest test = new ChangeTest();
+            test.Configure();
+            test.makeUpdates();
+            test.verifyChange();
+            test.verifyChangeWrongDefaultValue();
 
         }
     }

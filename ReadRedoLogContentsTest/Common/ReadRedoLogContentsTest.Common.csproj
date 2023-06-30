@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net4.8</TargetFramework>
@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <Reference Include="GigaSpaces.Core">
-      <HintPath>..\..\..\..\..\..\GigaSpaces\smart-cache.net-16.2.1-x64\NET v4.0\Bin\GigaSpaces.Core.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\GigaSpaces\XAP.NET-16.3.0-patch-p-3-x64\NET v4.0\Bin\GigaSpaces.Core.dll</HintPath>
     </Reference>
     <Reference Include="System.Net.Http" />
   </ItemGroup>

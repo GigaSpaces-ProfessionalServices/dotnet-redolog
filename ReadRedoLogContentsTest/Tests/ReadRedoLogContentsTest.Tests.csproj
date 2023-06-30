@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<PlatformTarget>x64</PlatformTarget>
-    <StartupObject>ReadRedoLogContentsTest.Feeder</StartupObject>
+    <StartupObject>ReadRedoLogContentsTest.WriteTest</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <Reference Include="GigaSpaces.Core">
-      <HintPath>..\..\..\..\..\..\GigaSpaces\smart-cache.net-16.2.1-x64\NET v4.0\Bin\GigaSpaces.Core.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\GigaSpaces\XAP.NET-16.3.0-patch-p-3-x64\NET v4.0\Bin\GigaSpaces.Core.dll</HintPath>
     </Reference>
     <Reference Include="System.Configuration" />
     <Reference Include="System.Net.Http" />
